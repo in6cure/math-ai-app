@@ -62,7 +62,7 @@ with tab1:
                     try:
                         prompt = f"Explain the {calc_type} of {user_input} step-by-step for a Class 12 student. The verified answer is {res_sym}. Use LaTeX."
                         resp = client.models.generate_content(
-                            model='gemini-2.0-flash', 
+                            model='gemini-2.5-flash-lite', 
                             contents=prompt
                         )
                         st.markdown(resp.text)
