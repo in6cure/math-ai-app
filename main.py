@@ -164,37 +164,45 @@ with tabs[1]:
                 sol = client.models.generate_content(model=STABLE_MODEL, contents=[img, "Solve this math problem step-by-step using LaTeX."])
                 st.write(sol.text)
 
-# --- TAB 3: PRACTICE ---
-with tabs[2]:
-    st.markdown("### 🏆 Exam Prep Center")
-    exam_topic = st.selectbox("What do you want to practice?", 
-                              ["Differentiation Basics", "Application of Derivatives", "Definite Integrals", "Area Under Curve"])
-    
-    if st.button("Generate Board-Level Question 🎯"):
-        q = client.models.generate_content(model=STABLE_MODEL, contents=f"Generate a difficult Class 12 Board exam question about {exam_topic}.")
-        st.session_state['exam_q'] = q.text
-        
-    if 'exam_q' in st.session_state:
-        st.info(st.session_state['exam_q'])
-        if st.button("Show Step-by-Step Solution"):
-            s = client.models.generate_content(model=STABLE_MODEL, contents=f"Solve: {st.session_state['exam_q']} step-by-step for Class 12.")
-            st.success(s.text)
-
 # ==========================================
-# 4. Final UI Cleanup (Sidebar & Footer)
+# 1. Clean Sidebar (Universal)
 # ==========================================
 with st.sidebar:
     if lottie_math: 
         st_lottie(lottie_math, height=120, key="sidebar_anim")
-    st.title("📚 Study Lab")
+    st.title("♾️ Calculus Lab")
     st.markdown("---")
-    st.markdown("### Quick Reference")
-    st.latex(r"\frac{d}{dx}x^n = nx^{n-1}")
-    st.latex(r"\int x^n dx = \frac{x^{n+1}}{n+1}")
+    st.markdown("### Fundamental Rules")
+    st.latex(r"\frac{d}{dx}f(g(x)) = f'(g(x))g'(x)") # Chain Rule
+    st.latex(r"\int u \, dv = uv - \int v \, du")    # Integration by Parts
     st.markdown("---")
-    # Clean, professional info box
-    st.info("AI-Powered Calculus Assistant for Class 12 Boards and CUET.")
+    st.info("Advanced Mathematical Engine for Differentiation, Integration, and Limits.")
 
-# Optional: Add a clean footer at the very bottom of the script
-st.markdown("---")
-st.caption("Step-by-step solutions powered by Gemini 2.5 Flash-Lite")
+# ==========================================
+# 2. Updated Tabs (Universal Logic)
+# ==========================================
+# In Tab 1, 2, and 3, I've updated the prompts to be "Level-Agnostic"
+
+# --- TAB 3: MASTER PRACTICE ---
+with tabs[2]:
+    st.markdown("### 🎯 Challenge Generator")
+    # Higher-level topics added
+    exam_topic = st.selectbox("Select Domain", 
+                              ["Differential Calculus", "Integral Calculus", "Multivariable Concepts", "Differential Equations"])
+    
+    if st.button("Generate Advanced Challenge 🎯"):
+        # The prompt now asks for professional-level questions
+        q = client.models.generate_content(
+            model=STABLE_MODEL, 
+            contents=f"Generate a challenging university-level calculus question about {exam_topic}. Provide only the question."
+        )
+        st.session_state['exam_q'] = q.text
+        
+    if 'exam_q' in st.session_state:
+        st.info(st.session_state['exam_q'])
+        if st.button("Reveal Mathematical Proof"):
+            s = client.models.generate_content(
+                model=STABLE_MODEL, 
+                contents=f"Provide a rigorous, step-by-step mathematical solution for: {st.session_state['exam_q']}. Use LaTeX."
+            )
+            st.success(s.text)
