@@ -79,7 +79,7 @@ def generate_pro_graph(equation_text, title, calc_type="General"):
 st.title("♾️ Calculus AI Pro")
 tabs = st.tabs(["⚡ Solver", "📸 Photo Math", "🎯 Exam Prep"])
 
-# --- TAB 1: SOLVER ---
+# --- TAB 1: SMART SOLVER (Integrated with Similar Question Logic) ---
 with tabs[0]:
     col_in, col_gr = st.columns([1, 1.5], gap="large")
     
@@ -88,41 +88,67 @@ with tabs[0]:
         op = st.selectbox("Select Action", ["Differentiation", "Integration"], key="solver_op")
         val = st.text_input("Enter Function", "x**2 - 4*x", key="solver_in")
         
-        btn_solve = st.button("Solve & Explain ✨")
+        btn_solve = st.button("Solve & Explain ✨", type="primary")
         btn_similar = st.button("Practice Similar Problem 🔄")
 
     with col_gr:
         fig = generate_pro_graph(val, f"f(x) = {val}", op)
-        if fig: st.plotly_chart(fig, use_container_width=True)
+        if fig: 
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Enter a valid mathematical function to see the visualization.")
 
     # 1. Main Solution Logic
     if btn_solve:
         st.markdown("---")
         try:
-            res = sp.diff(sp.sympify(val), sp.Symbol('x')) if op == "Differentiation" else sp.integrate(sp.sympify(val), sp.Symbol('x'))
+            # Mathematical verification using SymPy
+            x_sym = sp.Symbol('x')
+            expr = sp.sympify(val)
+            res = sp.diff(expr, x_sym) if op == "Differentiation" else sp.integrate(expr, x_sym)
+            
             st.latex(f"Result: {sp.latex(res)}")
-            resp = client.models.generate_content(model=STABLE_MODEL, contents=f"Explain step-by-step how to {op} {val}. Result is {res}.")
-            st.write(resp.text)
-        except Exception as e: st.error(f"Error: {e}")
+            
+            with st.spinner("AI is drafting the steps..."):
+                try:
+                    prompt = f"Explain step-by-step how to {op} the function {val} for a Class 12 student. The verified answer is {res}."
+                    resp = client.models.generate_content(model=STABLE_MODEL, contents=prompt)
+                    st.write(resp.text)
+                except Exception as ai_limit_err:
+                    st.warning("⚠️ AI is cooling down. The math above is correct, but please wait 10 seconds for the step-by-step explanation.")
+        except Exception as math_err:
+            st.error(f"❌ Math Error: {math_err}. Check your syntax (e.g., use 5*x instead of 5x).")
 
-    # 2. Similar Question Logic (Interactive)
+    # 2. Similar Question Logic (State-Managed)
     if btn_similar:
-        with st.spinner("Generating a similar challenge..."):
-            sim_q = client.models.generate_content(model=STABLE_MODEL, contents=f"Generate one similar Class 12 problem to {val} for {op}. Provide only the question.")
-            st.session_state['sim_question'] = sim_q.text
-            # Clear old solution when new question is generated
-            if 'sim_solution' in st.session_state: del st.session_state['sim_solution']
+        with st.spinner("Creating a twin challenge..."):
+            try:
+                sim_prompt = f"Generate one similar Class 12 math problem to {val} for {op}. Provide only the question text."
+                sim_q = client.models.generate_content(model=STABLE_MODEL, contents=sim_prompt)
+                st.session_state['sim_question'] = sim_q.text
+                # Reset the solution state when a new question is born
+                if 'sim_solution' in st.session_state: 
+                    del st.session_state['sim_solution']
+            except Exception as e:
+                st.error("⚠️ Quota reached. Please wait a moment before generating another practice problem.")
 
-    # Display the Similar Question and its Solution Reveal button
+    # 3. Persistent Display for Practice
     if 'sim_question' in st.session_state:
         st.markdown("---")
+        st.markdown("### 📝 Practice Zone")
         st.info(f"**Try this similar problem:** {st.session_state['sim_question']}")
         
+        # Reveal Solution Button
         if st.button("Check Answer for Similar Problem"):
             with st.spinner("Solving practice problem..."):
-                sim_s = client.models.generate_content(model=STABLE_MODEL, contents=f"Solve this math problem step-by-step: {st.session_state['sim_question']}")
-                st.session_state['sim_solution'] = sim_s.text
+                try:
+                    sim_s_prompt = f"Provide a detailed step-by-step LaTeX solution for: {st.session_state['sim_question']}"
+                    sim_s = client.models.generate_content(model=STABLE_MODEL, contents=sim_s_prompt)
+                    st.session_state['sim_solution'] = sim_s.text
+                except Exception:
+                    st.error("⚠️ AI limit exceeded. Please wait 15 seconds and try revealing the answer again.")
         
+        # Display the solution if it exists in memory
         if 'sim_solution' in st.session_state:
             st.success("### Practice Solution")
             st.write(st.session_state['sim_solution'])
