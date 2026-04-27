@@ -95,23 +95,37 @@ with tabs[0]:
         fig = generate_pro_graph(val, f"f(x) = {val}", op)
         if fig: st.plotly_chart(fig, use_container_width=True)
 
-    # Solution area spans full width below
+    # 1. Main Solution Logic
     if btn_solve:
         st.markdown("---")
-        with st.container():
-            try:
-                res = sp.diff(sp.sympify(val), sp.Symbol('x')) if op == "Differentiation" else sp.integrate(sp.sympify(val), sp.Symbol('x'))
-                st.latex(f"Result: {sp.latex(res)}")
-                resp = client.models.generate_content(model=STABLE_MODEL, contents=f"Explain step-by-step how to {op} the function {val} for Class 12. Final answer is {res}.")
-                st.write(resp.text)
-            except Exception as e: st.error(f"Error: {e}")
+        try:
+            res = sp.diff(sp.sympify(val), sp.Symbol('x')) if op == "Differentiation" else sp.integrate(sp.sympify(val), sp.Symbol('x'))
+            st.latex(f"Result: {sp.latex(res)}")
+            resp = client.models.generate_content(model=STABLE_MODEL, contents=f"Explain step-by-step how to {op} {val}. Result is {res}.")
+            st.write(resp.text)
+        except Exception as e: st.error(f"Error: {e}")
 
+    # 2. Similar Question Logic (Interactive)
     if btn_similar:
-        st.markdown("---")
         with st.spinner("Generating a similar challenge..."):
-            sim_resp = client.models.generate_content(model=STABLE_MODEL, contents=f"Generate a similar Class 12 math problem to {val} for {op}. Provide only the question.")
-            st.info(f"**Similar Challenge:** {sim_resp.text}")
+            sim_q = client.models.generate_content(model=STABLE_MODEL, contents=f"Generate one similar Class 12 problem to {val} for {op}. Provide only the question.")
+            st.session_state['sim_question'] = sim_q.text
+            # Clear old solution when new question is generated
+            if 'sim_solution' in st.session_state: del st.session_state['sim_solution']
 
+    # Display the Similar Question and its Solution Reveal button
+    if 'sim_question' in st.session_state:
+        st.markdown("---")
+        st.info(f"**Try this similar problem:** {st.session_state['sim_question']}")
+        
+        if st.button("Check Answer for Similar Problem"):
+            with st.spinner("Solving practice problem..."):
+                sim_s = client.models.generate_content(model=STABLE_MODEL, contents=f"Solve this math problem step-by-step: {st.session_state['sim_question']}")
+                st.session_state['sim_solution'] = sim_s.text
+        
+        if 'sim_solution' in st.session_state:
+            st.success("### Practice Solution")
+            st.write(st.session_state['sim_solution'])
 # --- TAB 2: PHOTO ---
 with tabs[1]:
     up = st.file_uploader("Upload Problem", type=["jpg", "png", "jpeg"])
