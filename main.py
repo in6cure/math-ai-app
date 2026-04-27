@@ -12,10 +12,11 @@ if "authenticated" not in st.session_state:
 
 if not st.session_state['authenticated']:
     st.markdown("## 🔒 Access Restricted")
-    st.info("Please enter your Whop Access Password to use Calculus AI Pro.")
+    st.info("Please enter your Access Password to use Calculus AI Pro.")
     
     pwd = st.text_input("Access Password", type="password")
     if st.button("Unlock App"):
+        # This checks whatever you wrote in the Streamlit Secrets
         if pwd == st.secrets.get("APP_PASSWORD"):
             st.session_state['authenticated'] = True
             st.rerun() 
