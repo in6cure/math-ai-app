@@ -180,10 +180,21 @@ with tabs[2]:
             s = client.models.generate_content(model=STABLE_MODEL, contents=f"Solve: {st.session_state['exam_q']} step-by-step for Class 12.")
             st.success(s.text)
 
-# Sidebar
+# ==========================================
+# 4. Final UI Cleanup (Sidebar & Footer)
+# ==========================================
 with st.sidebar:
-    if lottie_math: st_lottie(lottie_math, height=120)
+    if lottie_math: 
+        st_lottie(lottie_math, height=120, key="sidebar_anim")
     st.title("📚 Study Lab")
     st.markdown("---")
+    st.markdown("### Quick Reference")
     st.latex(r"\frac{d}{dx}x^n = nx^{n-1}")
-    st.info("Bikaner's Best AI Math Tutor")
+    st.latex(r"\int x^n dx = \frac{x^{n+1}}{n+1}")
+    st.markdown("---")
+    # Clean, professional info box
+    st.info("AI-Powered Calculus Assistant for Class 12 Boards and CUET.")
+
+# Optional: Add a clean footer at the very bottom of the script
+st.markdown("---")
+st.caption("Step-by-step solutions powered by Gemini 2.5 Flash-Lite")
