@@ -86,70 +86,90 @@ with tab1:
         except:
             st.warning("Could not generate graph. Try a simpler function like x**2.")
 
-# --- TAB 2: PHOTO MATH (OCR) ---
+# --- TAB 2: PHOTO MATH (OCR & SOLVE) ---
 with tab2:
-    st.write("Upload a photo of your handwritten math problem.")
-    uploaded_file = st.file_uploader("Choose a JPG or PNG image...", type=["jpg", "png", "jpeg"])
+    st.header("📸 Photo Math Solver")
+    st.write("Upload a photo of your handwritten math problem or a textbook page.")
+    
+    # 1. File Uploader
+    uploaded_file = st.file_uploader("Choose a JPG, PNG, or JPEG image...", type=["jpg", "png", "jpeg"])
     
     if uploaded_file:
+        # Display the uploaded image
         img = Image.open(uploaded_file)
         st.image(img, caption="Problem to Solve", width=400)
         
+        # 2. Solve Button
         if st.button("Read & Solve with Gemini"):
-            with st.spinner("Analyzing image..."):
+            with st.spinner("AI is analyzing the image and solving..."):
                 try:
+                    # THE UPDATED PROMPT:
+                    # We tell the AI to be a tutor and avoid "Code" formatting.
+                    image_prompt = """
+                    Identify the mathematical problem in this image and solve it step-by-step.
+                    
+                    RULES:
+                    1. Use clear Class 12 mathematical logic.
+                    2. Use standard Markdown and LaTeX (e.g., $...$ or $$...$$) for all math.
+                    3. DO NOT include LaTeX document headers (no \documentclass, no \begin{document}).
+                    4. If the image is blurry or the math is unclear, ask the user to retake the photo.
+                    5. Start directly with 'Problem Identified:'
+                    """
+                    
                     response = client.models.generate_content(
                         model='gemini-2.5-flash-lite',
-                        contents=[img, "Analyze this image. Identify the math problem and provide a full step-by-step solution in LaTeX."]
+                        contents=[img, image_prompt]
                     )
+                    
+                    st.success("Analysis Complete!")
                     st.markdown("### Solution from Photo")
-                    st.markdown(response.text)
+                    # Using st.write to ensure LaTeX renders properly
+                    st.write(response.text)
+                    
                 except Exception as img_err:
+                    # DEBUG LOGIC:
                     st.error(f"⚠️ IMAGE AI ERROR: {str(img_err)}")
+                    st.info("Ensure your API key is correct and you haven't exceeded your free limit.")
+    else:
+        st.info("Waiting for image upload... Once uploaded, click the button above to solve.")
+
 
 # --- TAB 3: EXAM PRACTICE ---
 with tab3:
     st.write("Generate custom practice problems for CUET or Board Exams.")
     topic = st.selectbox("Select Topic", ["Calculus Basics", "Maxima and Minima", "Definite Integrals", "Rate of Change"])
     
-    # 1. Generate Question Button
     if st.button("Generate Random Question"):
         try:
-            q_prompt = f"Generate a high-level Class 12 board exam question about {topic}. Do not provide the solution yet."
+            # We add a hint here too so the question itself is clean
+            q_prompt = f"Generate a Class 12 board exam question about {topic}. Provide only the question text in clean Markdown."
             q_resp = client.models.generate_content(model='gemini-2.5-flash-lite', contents=q_prompt)
-            
-            # SAVE the question to session state so it stays on screen
             st.session_state['current_q'] = q_resp.text
-            # Clear any old solution when a new question is generated
             if 'current_sol' in st.session_state:
                 del st.session_state['current_sol']
-                
         except Exception as e:
-            st.error(f"Error generating question: {str(e)}")
+            st.error(f"Error: {str(e)}")
 
-    # 2. Display the saved question (This keeps it on screen!)
     if 'current_q' in st.session_state:
-        st.info(f"**Your Question:**\n\n{st.session_state['current_q']}")
+        st.info(f"**Question:**\n\n{st.session_state['current_q']}")
         
-        # 3. Solve Button (Only shows if there is a question)
         if st.button("Reveal Detailed Solution"):
             try:
-                with st.spinner("Solving..."):
-                   s_prompt = f"""
-Provide a step-by-step math solution for this question: {st.session_state['current_q']}
-IMPORTANT: 
-1. Use standard Markdown and LaTeX (e.g., $...$ or $$...$$).
-2. DO NOT include LaTeX document headers like \documentclass, \usepackage, or \begin{{document}}. 
-3. Start directly with the solution steps.
-"""
+                with st.spinner("Calculating..."):
+                    # THIS IS YOUR UPDATED PROMPT
+                    s_prompt = f"""
+                    Provide a step-by-step math solution for this question: {st.session_state['current_q']}
+                    IMPORTANT: 
+                    1. Use standard Markdown and LaTeX (e.g., $...$ or $$...$$).
+                    2. DO NOT include LaTeX document headers like \documentclass or \begin{{document}}. 
+                    3. Start directly with 'Step 1:'
+                    """
                     s_resp = client.models.generate_content(model='gemini-2.5-flash-lite', contents=s_prompt)
-                    # SAVE the solution so it stays visible
                     st.session_state['current_sol'] = s_resp.text
             except Exception as e:
-                st.error(f"Error generating solution: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
-    # 4. Display the saved solution
     if 'current_sol' in st.session_state:
         st.success("### Step-by-Step Answer")
-        st.markdown(st.session_state['current_sol'])
-                
+        # st.write handles LaTeX better than raw st.markdown in some cases
+        st.write(st.session_state['current_sol'])
