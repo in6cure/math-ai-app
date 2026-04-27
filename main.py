@@ -2,12 +2,22 @@ import streamlit as st
 import sympy as sp
 from google import genai
 import plotly.graph_objects as go
-import pandas as pd
 import numpy as np
 from PIL import Image
 
-# 1. Page Configuration & Professional Sidebar
+# ==========================================
+# 1. Page Config & Professional Styling
+# ==========================================
 st.set_page_config(page_title="Calculus Master Pro AI", page_icon="♾️", layout="wide")
+
+# Custom CSS for a more "Interesting" Look
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .stTabs [data-baseweb="tab-list"] { gap: 24px; }
+    .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; font-weight: bold; }
+    </style>
+    """, unsafe_allow_stdio=True)
 
 with st.sidebar:
     st.title("📚 Study Materials")
@@ -19,157 +29,161 @@ with st.sidebar:
     st.info("Tip: Use ** for powers (x**2) and * for multiply (5*x).")
 
 st.title("♾️ Calculus Master Pro AI")
-st.subheader("Your Class 12 & CUET Math Partner")
+st.subheader("Your AI-Powered Math & Economics Lab")
 
-# 2. API Setup with Error Handling
+# ==========================================
+# 2. API Setup & ELABORATIVE GRAPHING ENGINE
+# ==========================================
 api_key = st.secrets.get("GEMINI_API_KEY")
-
 if not api_key:
-    st.error("❌ API Key missing! Go to Settings -> Secrets and add GEMINI_API_KEY")
+    st.error("❌ API Key missing!")
     st.stop()
-
-# Initializing the client
 client = genai.Client(api_key=api_key)
+STABLE_MODEL = 'gemini-2.5-flash-lite' 
 
-# 3. Main Interface Tabs
-tab1, tab2, tab3 = st.tabs(["🧮 Solver & Grapher", "📸 Photo Math", "📝 Exam Practice"])
-
-# --- TAB 1: SOLVER & GRAPHER ---
-with tab1:
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        calc_type = st.selectbox("Operation", ["Differentiation", "Integration"])
-        user_input = st.text_input("Enter Function (e.g., x**2 + 5*x):", value="x**2")
+def generate_elaborate_graph(equation_text, title_text, calc_type="General"):
+    try:
+        x_sym = sp.Symbol('x')
+        expr = sp.sympify(equation_text)
+        f_numpy = sp.lambdify(x_sym, expr, "numpy")
         
-        if st.button("Solve & Graph"):
+        x_vals = np.linspace(-10, 10, 400)
+        y_vals = f_numpy(x_vals)
+
+        fig = go.Figure()
+
+        # 1. Main Trace with Shading
+        fig.add_trace(go.Scatter(
+            x=x_vals, y=y_vals, 
+            mode='lines',
+            name="f(x)",
+            line=dict(color='#00d4ff', width=4),
+            fill='tozeroy' if calc_type == "Integration" else None,
+            fillcolor='rgba(0, 212, 255, 0.2)',
+            hovertemplate="<b>x:</b> %{x:.2f}<br><b>y:</b> %{y:.2f}<extra></extra>"
+        ))
+
+        # 2. MARK CRITICAL POINTS (Turning Points)
+        try:
+            derivative = sp.diff(expr, x_sym)
+            critical_points = sp.solve(derivative, x_sym)
+            real_crit = [float(p) for p in critical_points if p.is_real and -10 <= p <= 10]
+            
+            if real_crit:
+                cp_y = [float(expr.subs(x_sym, p)) for p in real_crit]
+                fig.add_trace(go.Scatter(
+                    x=real_crit, y=cp_y,
+                    mode='markers',
+                    name="Turning Points",
+                    marker=dict(color='#ff4b4b', size=12, symbol='star', line=dict(width=2, color="white")),
+                    text=[f"Peak/Valley: ({p:.2f}, {y:.2f})" for p, y in zip(real_crit, cp_y)],
+                    hoverinfo="text"
+                ))
+        except: pass
+
+        # 3. Elaborative Dark UI
+        fig.update_layout(
+            title=dict(text=title_text, font=dict(size=18, color="#00d4ff")),
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(showgrid=True, gridcolor='#333', zeroline=True, zerolinecolor='white'),
+            yaxis=dict(showgrid=True, gridcolor='#333', zeroline=True, zerolinecolor='white'),
+            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+            height=450
+        )
+        return fig
+    except:
+        return None
+
+# ==========================================
+# 3. INTERFACE TABS
+# ==========================================
+tab1, tab2, tab3 = st.tabs(["🧮 Smart Solver", "📸 Photo Math", "📝 Exam Prep"])
+
+# --- TAB 1: SOLVER ---
+with tab1:
+    col1, col2 = st.columns([1, 1.2])
+    with col1:
+        calc_type = st.selectbox("I want to:", ["Differentiation", "Integration"], key="tab1_calc")
+        user_input = st.text_input("Enter Function:", value="x**3 - 3*x", key="tab1_in")
+        
+        if st.button("Analyze & Solve", type="primary"):
             try:
                 x_sym = sp.Symbol('x')
                 expr = sp.sympify(user_input)
+                res_sym = sp.diff(expr, x_sym) if calc_type == "Differentiation" else sp.integrate(expr, x_sym)
                 
-                # Math Logic
-                if calc_type == "Differentiation":
-                    res_sym = sp.diff(expr, x_sym)
-                else:
-                    res_sym = sp.integrate(expr, x_sym)
-                
-                st.success("Mathematical Calculation Successful!")
                 st.latex(f"Result: {sp.latex(res_sym)}")
                 
-                # --- INTEGRATED DEBUG AI LOGIC ---
-                st.markdown("### Step-by-Step Logic")
-                with st.spinner("AI is explaining the steps..."):
-                    try:
-                        prompt = f"Explain the {calc_type} of {user_input} step-by-step for a Class 12 student. The verified answer is {res_sym}. Use LaTeX."
-                        resp = client.models.generate_content(
-                            model='gemini-2.5-flash-lite', 
-                            contents=prompt
-                        )
-                        st.markdown(resp.text)
-                    except Exception as ai_err:
-                        st.error(f"⚠️ GOOGLE API ERROR: {str(ai_err)}")
-                        st.info("Check if your API key is active or if you have reached your free limit.")
-
-            except Exception as math_err:
-                st.error(f"❌ Math Syntax Error: {math_err}. Make sure to use * for multiplication.")
+                with st.spinner("AI thinking..."):
+                    prompt = f"Explain the {calc_type} of {user_input} step-by-step for a Class 12 student. The answer is {res_sym}. Use standard LaTeX markers ($$). Also explain what the graph's red stars represent."
+                    resp = client.models.generate_content(model=STABLE_MODEL, contents=prompt)
+                    st.write(resp.text)
+            except Exception as e: st.error(f"Error: {e}")
 
     with col2:
-        try:
-            # Create a graph of the original function
-            f_graph = sp.lambdify(sp.Symbol('x'), sp.sympify(user_input), "numpy")
-            x_vals = np.linspace(-10, 10, 100)
-            y_vals = f_graph(x_vals)
-            
-            fig = go.Figure(data=go.Scatter(x=x_vals, y=y_vals, mode='lines', name="f(x)", line=dict(color='royalblue', width=4)))
-            fig.update_layout(title=f"Graph of {user_input}", xaxis_title="x", yaxis_title="f(x)", height=450)
-            st.plotly_chart(fig, use_container_width=True)
-        except:
-            st.warning("Could not generate graph. Try a simpler function like x**2.")
+        fig = generate_elaborate_graph(user_input, f"Interactive View of f(x) = {user_input}", calc_type)
+        if fig: st.plotly_chart(fig, use_container_width=True)
 
-# --- TAB 2: PHOTO MATH (OCR & SOLVE) ---
+# --- TAB 2: PHOTO MATH ---
 with tab2:
-    st.header("📸 Photo Math Solver")
-    st.write("Upload a photo of your handwritten math problem or a textbook page.")
-    
-    # 1. File Uploader
-    uploaded_file = st.file_uploader("Choose a JPG, PNG, or JPEG image...", type=["jpg", "png", "jpeg"])
+    st.write("Upload your math problem photo below.")
+    uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"], key="photo_upload")
     
     if uploaded_file:
-        # Display the uploaded image
         img = Image.open(uploaded_file)
         st.image(img, caption="Problem to Solve", width=400)
         
-        # 2. Solve Button
-        if st.button("Read & Solve with Gemini"):
-            with st.spinner("AI is analyzing the image and solving..."):
+        if st.button("Visual Analysis & Solve"):
+            with st.spinner("Analyzing handwriting..."):
                 try:
-                    # THE UPDATED PROMPT:
-                    # We tell the AI to be a tutor and avoid "Code" formatting.
-                    image_prompt = """
-                    Identify the mathematical problem in this image and solve it step-by-step.
+                    # Request for solution and raw formula for graphing
+                    image_prompt = "Solve this step-by-step. Use Markdown and LaTeX. No document headers."
+                    formula_prompt = "Return ONLY the raw Python-compatible math formula from this image (e.g. x**2). Nothing else."
                     
-                    RULES:
-                    1. Use clear Class 12 mathematical logic.
-                    2. Use standard Markdown and LaTeX (e.g., $...$ or $$...$$) for all math.
-                    3. DO NOT include LaTeX document headers (no \documentclass, no \begin{document}).
-                    4. If the image is blurry or the math is unclear, ask the user to retake the photo.
-                    5. Start directly with 'Problem Identified:'
-                    """
+                    sol_resp = client.models.generate_content(model=STABLE_MODEL, contents=[img, image_prompt])
+                    formula_resp = client.models.generate_content(model=STABLE_MODEL, contents=[img, formula_prompt])
                     
-                    response = client.models.generate_content(
-                        model='gemini-2.5-flash-lite',
-                        contents=[img, image_prompt]
-                    )
+                    col_s, col_g = st.columns([1, 1])
+                    with col_s:
+                        st.markdown("### Solution")
+                        st.write(sol_resp.text)
                     
-                    st.success("Analysis Complete!")
-                    st.markdown("### Solution from Photo")
-                    # Using st.write to ensure LaTeX renders properly
-                    st.write(response.text)
-                    
-                except Exception as img_err:
-                    # DEBUG LOGIC:
-                    st.error(f"⚠️ IMAGE AI ERROR: {str(img_err)}")
-                    st.info("Ensure your API key is correct and you haven't exceeded your free limit.")
-    else:
-        st.info("Waiting for image upload... Once uploaded, click the button above to solve.")
-
+                    with col_g:
+                        f_text = formula_resp.text.strip().replace('`','')
+                        fig = generate_elaborate_graph(f_text, f"Visualizing: {f_text}")
+                        if fig: st.plotly_chart(fig, use_container_width=True)
+                        else: st.warning("Graph not available.")
+                except Exception as e: st.error(f"Error: {e}")
 
 # --- TAB 3: EXAM PRACTICE ---
 with tab3:
-    st.write("Generate custom practice problems for CUET or Board Exams.")
-    topic = st.selectbox("Select Topic", ["Calculus Basics", "Maxima and Minima", "Definite Integrals", "Rate of Change"])
+    topic = st.selectbox("Choose Topic", ["Calculus Basics", "Maxima and Minima", "Definite Integrals"])
     
-    if st.button("Generate Random Question"):
-        try:
-            # We add a hint here too so the question itself is clean
-            q_prompt = f"Generate a Class 12 board exam question about {topic}. Provide only the question text in clean Markdown."
-            q_resp = client.models.generate_content(model='gemini-2.5-flash-lite', contents=q_prompt)
-            st.session_state['current_q'] = q_resp.text
-            if 'current_sol' in st.session_state:
-                del st.session_state['current_sol']
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-
-    if 'current_q' in st.session_state:
-        st.info(f"**Question:**\n\n{st.session_state['current_q']}")
+    if st.button("Generate Challenging Question"):
+        q_prompt = f"Generate a difficult Class 12 exam question about {topic}. Provide only the question."
+        q_resp = client.models.generate_content(model=STABLE_MODEL, contents=q_prompt)
+        st.session_state['q_txt'] = q_resp.text
         
-        if st.button("Reveal Detailed Solution"):
-            try:
-                with st.spinner("Calculating..."):
-                    # THIS IS YOUR UPDATED PROMPT
-                    s_prompt = f"""
-                    Provide a step-by-step math solution for this question: {st.session_state['current_q']}
-                    IMPORTANT: 
-                    1. Use standard Markdown and LaTeX (e.g., $...$ or $$...$$).
-                    2. DO NOT include LaTeX document headers like \documentclass or \begin{{document}}. 
-                    3. Start directly with 'Step 1:'
-                    """
-                    s_resp = client.models.generate_content(model='gemini-2.5-flash-lite', contents=s_prompt)
-                    st.session_state['current_sol'] = s_resp.text
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
+        f_prompt = f"Extract just the raw math formula from this: {q_resp.text}. Reply only with the formula like x**2."
+        f_resp = client.models.generate_content(model=STABLE_MODEL, contents=f_prompt)
+        st.session_state['q_form'] = f_resp.text.strip().replace('`','')
+        if 'q_sol' in st.session_state: del st.session_state['q_sol']
 
-    if 'current_sol' in st.session_state:
+    if 'q_txt' in st.session_state:
+        c1, c2 = st.columns([1, 1])
+        with c1: st.info(f"**Question:**\n\n{st.session_state['q_txt']}")
+        with c2:
+            fig = generate_elaborate_graph(st.session_state['q_form'], "Problem Visualization")
+            if fig: st.plotly_chart(fig, use_container_width=True)
+        
+        if st.button("Reveal Math Logic"):
+            with st.spinner("Processing..."):
+                s_prompt = f"Provide a detailed step-by-step LaTeX solution for: {st.session_state['q_txt']}. No document headers. Start with 'Step 1:'."
+                s_resp = client.models.generate_content(model=STABLE_MODEL, contents=s_prompt)
+                st.session_state['q_sol'] = s_resp.text
+
+    if 'q_sol' in st.session_state:
         st.success("### Step-by-Step Answer")
-        # st.write handles LaTeX better than raw st.markdown in some cases
-        st.write(st.session_state['current_sol'])
+        st.write(st.session_state['q_sol'])
