@@ -127,7 +127,7 @@ with tab3:
         if st.button("Reveal Detailed Solution"):
             try:
                 s_prompt = f"Provide a step-by-step LaTeX solution for this question: {st.session_state['current_q']}"
-                s_resp = client.models.generate_content(model='gemini-1.5-flash', contents=s_prompt)
+                s_resp = client.models.generate_content(model='gemini-2.5-flash-lite', contents=s_prompt)
                 st.success("### Step-by-Step Answer")
                 st.markdown(s_resp.text)
             except Exception as e:
