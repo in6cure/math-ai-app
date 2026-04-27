@@ -116,7 +116,7 @@ with tab3:
         try:
             q_prompt = f"Generate a high-level Class 12 board exam question about {topic}. Do not provide the solution yet."
             q_resp = client.models.generate_content(model='gemini-2.5-flash-lite', contents=q_prompt)
-                     st.info(f"**Your Question:**\n\n{q_resp.text}")
+            st.info(f"**Your Question:**\n\n{q_resp.text}")
             
             # Store the question in a hidden way to solve it if requested
             st.session_state['current_q'] = q_resp.text
