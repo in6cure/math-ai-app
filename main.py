@@ -4,7 +4,24 @@ from google import genai
 import plotly.graph_objects as go
 import numpy as np
 from PIL import Image
+# ==========================================
+# 0. SECURITY LOCK 🔒
+# ==========================================
+if "authenticated" not in st.session_state:
+    st.session_state['authenticated'] = False
 
+if not st.session_state['authenticated']:
+    st.markdown("## 🔒 Access Restricted")
+    st.info("Please enter your Whop Access Password to use Calculus AI Pro.")
+    
+    pwd = st.text_input("Access Password", type="password")
+    if st.button("Unlock App"):
+        if pwd == st.secrets.get("APP_PASSWORD"):
+            st.session_state['authenticated'] = True
+            st.rerun() 
+        else:
+            st.error("❌ Incorrect Password.")
+    st.stop() # Stops the rest of the app from loading
 # ==========================================
 # 1. Page & Aesthetic Config
 # ==========================================
