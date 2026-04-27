@@ -152,18 +152,40 @@ with tabs[0]:
         if 'sim_solution' in st.session_state:
             st.success("### Practice Solution")
             st.write(st.session_state['sim_solution'])
-# --- TAB 2: PHOTO ---
-with tabs[1]:
-    up = st.file_uploader("Upload Problem", type=["jpg", "png", "jpeg"])
-    if up:
-        img = Image.open(up)
-        c_img, c_sol = st.columns([1, 2])
-        with c_img: st.image(img, use_container_width=True)
-        with c_sol:
-            if st.button("AI Vision Solve 📸"):
-                sol = client.models.generate_content(model=STABLE_MODEL, contents=[img, "Solve this math problem step-by-step using LaTeX."])
-                st.write(sol.text)
+# --- OPTIMIZED TAB 2: PHOTO MATH ---
+if st.button("Visual Analysis & Solve"):
+    with st.spinner("Analyzing handwriting..."):
+        try:
+            # We ask for BOTH things in one single request to save quota
+            master_prompt = """
+            1. Solve this problem step-by-step using LaTeX.
+            2. At the very end of your response, provide the raw Python-compatible 
+               formula for this function on a single line starting with 'FORMULA:' 
+               (e.g., FORMULA: x**3 + sin(x)).
+            """
+            
+            response = client.models.generate_content(model=STABLE_MODEL, contents=[img, master_prompt])
+            full_text = response.text
+            
+            # Split the response to get the solution and the formula
+            if "FORMULA:" in full_text:
+                solution_part, formula_part = full_text.split("FORMULA:")
+                f_text = formula_part.strip().replace('`','')
+            else:
+                solution_part = full_text
+                f_text = "x" # Fallback
 
+            col_s, col_g = st.columns([1, 1])
+            with col_s:
+                st.markdown("### Solution")
+                st.write(solution_part)
+            
+            with col_g:
+                fig = generate_elaborate_graph(f_text, f"Visualizing: {f_text}")
+                if fig: st.plotly_chart(fig, use_container_width=True)
+                
+        except Exception as e:
+            st.error(f"⚠️ API Error: {str(e)}")
 # ==========================================
 # 1. Clean Sidebar (Universal)
 # ==========================================
