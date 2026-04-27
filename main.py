@@ -112,23 +112,38 @@ with tab3:
     st.write("Generate custom practice problems for CUET or Board Exams.")
     topic = st.selectbox("Select Topic", ["Calculus Basics", "Maxima and Minima", "Definite Integrals", "Rate of Change"])
     
-    if st.button("Generate Practice Question"):
+    # 1. Generate Question Button
+    if st.button("Generate Random Question"):
         try:
             q_prompt = f"Generate a high-level Class 12 board exam question about {topic}. Do not provide the solution yet."
             q_resp = client.models.generate_content(model='gemini-2.5-flash-lite', contents=q_prompt)
-            st.info(f"**Your Question:**\n\n{q_resp.text}")
             
-            # Store the question in a hidden way to solve it if requested
+            # SAVE the question to session state so it stays on screen
             st.session_state['current_q'] = q_resp.text
+            # Clear any old solution when a new question is generated
+            if 'current_sol' in st.session_state:
+                del st.session_state['current_sol']
+                
         except Exception as e:
             st.error(f"Error generating question: {str(e)}")
 
+    # 2. Display the saved question (This keeps it on screen!)
     if 'current_q' in st.session_state:
+        st.info(f"**Your Question:**\n\n{st.session_state['current_q']}")
+        
+        # 3. Solve Button (Only shows if there is a question)
         if st.button("Reveal Detailed Solution"):
             try:
-                s_prompt = f"Provide a step-by-step LaTeX solution for this question: {st.session_state['current_q']}"
-                s_resp = client.models.generate_content(model='gemini-2.5-flash-lite', contents=s_prompt)
-                st.success("### Step-by-Step Answer")
-                st.markdown(s_resp.text)
+                with st.spinner("Solving..."):
+                    s_prompt = f"Provide a detailed step-by-step LaTeX solution for this question: {st.session_state['current_q']}"
+                    s_resp = client.models.generate_content(model='gemini-2.5-flash-lite', contents=s_prompt)
+                    # SAVE the solution so it stays visible
+                    st.session_state['current_sol'] = s_resp.text
             except Exception as e:
                 st.error(f"Error generating solution: {str(e)}")
+
+    # 4. Display the saved solution
+    if 'current_sol' in st.session_state:
+        st.success("### Step-by-Step Answer")
+        st.markdown(st.session_state['current_sol'])
+                
