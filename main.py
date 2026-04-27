@@ -99,7 +99,7 @@ with tab2:
             with st.spinner("Analyzing image..."):
                 try:
                     response = client.models.generate_content(
-                        model='gemini-1.5-flash',
+                        model='gemini-2.5-flash-lite',
                         contents=[img, "Analyze this image. Identify the math problem and provide a full step-by-step solution in LaTeX."]
                     )
                     st.markdown("### Solution from Photo")
@@ -115,8 +115,8 @@ with tab3:
     if st.button("Generate Practice Question"):
         try:
             q_prompt = f"Generate a high-level Class 12 board exam question about {topic}. Do not provide the solution yet."
-            q_resp = client.models.generate_content(model='gemini-1.5-flash', contents=q_prompt)
-            st.info(f"**Your Question:**\n\n{q_resp.text}")
+            q_resp = client.models.generate_content(model='gemini-2.5-flash-lite', contents=q_prompt)
+                     st.info(f"**Your Question:**\n\n{q_resp.text}")
             
             # Store the question in a hidden way to solve it if requested
             st.session_state['current_q'] = q_resp.text
