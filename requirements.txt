@@ -5,3 +5,4 @@ plotly
 numpy
 pillow
 pandas
+streamlit-lottie
