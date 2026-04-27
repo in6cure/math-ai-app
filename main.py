@@ -135,7 +135,13 @@ with tab3:
         if st.button("Reveal Detailed Solution"):
             try:
                 with st.spinner("Solving..."):
-                    s_prompt = f"Provide a detailed step-by-step LaTeX solution for this question: {st.session_state['current_q']}"
+                   s_prompt = f"""
+Provide a step-by-step math solution for this question: {st.session_state['current_q']}
+IMPORTANT: 
+1. Use standard Markdown and LaTeX (e.g., $...$ or $$...$$).
+2. DO NOT include LaTeX document headers like \documentclass, \usepackage, or \begin{{document}}. 
+3. Start directly with the solution steps.
+"""
                     s_resp = client.models.generate_content(model='gemini-2.5-flash-lite', contents=s_prompt)
                     # SAVE the solution so it stays visible
                     st.session_state['current_sol'] = s_resp.text
