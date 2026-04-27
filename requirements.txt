@@ -2,5 +2,6 @@ streamlit
 sympy
 google-genai
 plotly
-pandas
+numpy
 pillow
+pandas
